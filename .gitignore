@@ -1,0 +1,15 @@
+# 忽略所有 zip 压缩包
+*.zip
+*.rar
+*.7z
+
+# 忽略所有 Excel 格式文件（97-2003版 .xls + 新版 .xlsx）
+*.xls
+*.xlsx
+
+# 可选：忽略 Excel 临时文件（如果有生成的话）
+*.xlk
+*.xltmp
+
+node_modules
+解压后
