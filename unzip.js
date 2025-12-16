@@ -1,14 +1,17 @@
-const fs = require('fs-extra');
-const path = require('path');
-const { exec } = require('child_process');
+const fs = require("fs-extra");
+const path = require("path");
+const { exec } = require("child_process");
 
 // 配置项
 const CONFIG = {
-  sourceDir: path.join(__dirname, '循环神经网络自然语言处理(附件)'),        // 源压缩包目录
-  outputDir: path.join(__dirname, '解压后'),                // 最终结果目录
-  archiveExts: ['.zip', '.7z', '.rar', '.tar', '.gz'], // 支持的压缩包格式
-  targetFileExt: '.ipynb',                          // 仅保留ipynb文件
-  unzipMark: '.unzipped'                            // 解压标记（防重复）
+  sourceDir: path.join(
+    __dirname,
+    "2025秋研深度学习-实验2_神经网络应用案例与调优(附件)"
+  ), // 源压缩包目录
+  outputDir: path.join(__dirname, "解压后"), // 最终结果目录
+  archiveExts: [".zip", ".7z", ".rar", ".tar", ".gz"], // 支持的压缩包格式
+  targetFileExt: ".ipynb", // 仅保留ipynb文件
+  unzipMark: ".unzipped", // 解压标记（防重复）
 };
 
 /**
@@ -17,7 +20,7 @@ const CONFIG = {
  * @param {Set} processedArchives 已处理压缩包集合
  */
 async function scanAndExtractNested(dir, processedArchives) {
-  const files = await fs.readdir(dir).catch(err => {
+  const files = await fs.readdir(dir).catch((err) => {
     console.warn(`⚠️  读取目录失败 ${dir}：${err.message}`);
     return [];
   });
@@ -35,12 +38,23 @@ async function scanAndExtractNested(dir, processedArchives) {
     else {
       const fileExt = path.extname(filePath).toLowerCase();
       // 处理未解压的压缩包
-      if (CONFIG.archiveExts.includes(fileExt) && !filePath.endsWith(CONFIG.unzipMark) && !processedArchives.has(filePath)) {
+      if (
+        CONFIG.archiveExts.includes(fileExt) &&
+        !filePath.endsWith(CONFIG.unzipMark) &&
+        !processedArchives.has(filePath)
+      ) {
         await extractArchive(filePath, processedArchives);
       }
       // 删除非ipynb文件（保留目标文件）
-      else if (fileExt !== CONFIG.targetFileExt && !filePath.endsWith(CONFIG.unzipMark)) {
-        await fs.unlink(filePath).catch(err => console.warn(`⚠️  删除非目标文件失败 ${filePath}：${err.message}`));
+      else if (
+        fileExt !== CONFIG.targetFileExt &&
+        !filePath.endsWith(CONFIG.unzipMark)
+      ) {
+        await fs
+          .unlink(filePath)
+          .catch((err) =>
+            console.warn(`⚠️  删除非目标文件失败 ${filePath}：${err.message}`)
+          );
       }
     }
   }
@@ -53,7 +67,8 @@ async function scanAndExtractNested(dir, processedArchives) {
  */
 async function extractArchive(archivePath, processedArchives = new Set()) {
   const ext = path.extname(archivePath).toLowerCase();
-  if (processedArchives.has(archivePath) || !CONFIG.archiveExts.includes(ext)) return;
+  if (processedArchives.has(archivePath) || !CONFIG.archiveExts.includes(ext))
+    return;
   processedArchives.add(archivePath);
 
   try {
@@ -61,19 +76,29 @@ async function extractArchive(archivePath, processedArchives = new Set()) {
     await new Promise((resolve) => {
       const timeout = setTimeout(() => resolve(), 60000);
       const archiveDir = path.dirname(archivePath);
-      const cmd = `bz x -aoa -y "${path.basename(archivePath)}"`;
+      const cmd = `bz x -aoa -y -target:name "${path.basename(archivePath)}" `;
 
       exec(cmd, { cwd: archiveDir }, (err, stdout, stderr) => {
         clearTimeout(timeout);
         if (err) {
-          if (stderr.includes('password') || stdout.includes('密码')) console.warn(`⚠️  ${path.basename(archivePath)} 已加密，跳过`);
-          else if (stderr.includes('corrupt') || stderr.includes('损坏')) console.warn(`⚠️  ${path.basename(archivePath)} 损坏，跳过`);
-          else console.error(`❌ 解压失败 ${path.basename(archivePath)}：${err.message.substring(0, 50)}`);
+          if (stderr.includes("password") || stdout.includes("密码"))
+            console.warn(`⚠️  ${path.basename(archivePath)} 已加密，跳过`);
+          else if (stderr.includes("corrupt") || stderr.includes("损坏"))
+            console.warn(`⚠️  ${path.basename(archivePath)} 损坏，跳过`);
+          else
+            console.error(
+              `❌ 解压失败 ${path.basename(
+                archivePath
+              )}：${err.message.substring(0, 50)}`
+            );
         } else {
           console.log(`✅ 解压成功：${path.basename(archivePath)}`);
           // 写入解压标记
-          const markFile = path.join(archiveDir, `${path.basename(archivePath)}${CONFIG.unzipMark}`);
-          fs.writeFile(markFile, '已解压').catch(() => {});
+          const markFile = path.join(
+            archiveDir,
+            `${path.basename(archivePath)}${CONFIG.unzipMark}`
+          );
+          fs.writeFile(markFile, "已解压").catch(() => {});
         }
         resolve();
       });
@@ -82,7 +107,10 @@ async function extractArchive(archivePath, processedArchives = new Set()) {
     // 递归处理嵌套压缩包
     const archiveDir = path.dirname(archivePath);
     const unzipPath = path.join(archiveDir, path.basename(archivePath, ext));
-    if (await fs.pathExists(unzipPath) && (await fs.stat(unzipPath)).isDirectory()) {
+    if (
+      (await fs.pathExists(unzipPath)) &&
+      (await fs.stat(unzipPath)).isDirectory()
+    ) {
       await scanAndExtractNested(unzipPath, processedArchives);
     } else {
       await scanAndExtractNested(archiveDir, processedArchives);
@@ -90,11 +118,15 @@ async function extractArchive(archivePath, processedArchives = new Set()) {
 
     // 清理原压缩包和标记文件
     await fs.unlink(archivePath).catch(() => {});
-    const markFile = path.join(archiveDir, `${path.basename(archivePath)}${CONFIG.unzipMark}`);
+    const markFile = path.join(
+      archiveDir,
+      `${path.basename(archivePath)}${CONFIG.unzipMark}`
+    );
     await fs.unlink(markFile).catch(() => {});
-
   } catch (err) {
-    console.error(`❌ 处理压缩包异常 ${path.basename(archivePath)}：${err.message}`);
+    console.error(
+      `❌ 处理压缩包异常 ${path.basename(archivePath)}：${err.message}`
+    );
   }
 }
 
@@ -113,7 +145,9 @@ async function flattenStudentDir(studentDir) {
 
       if (stats.isDirectory()) {
         await collectIpynbFiles(filePath, files); // 递归收集子目录的ipynb
-      } else if (path.extname(filePath).toLowerCase() === CONFIG.targetFileExt) {
+      } else if (
+        path.extname(filePath).toLowerCase() === CONFIG.targetFileExt
+      ) {
         files.push(filePath); // 收集ipynb文件路径
       }
     }
@@ -122,7 +156,7 @@ async function flattenStudentDir(studentDir) {
 
   // 1. 收集所有ipynb文件
   const ipynbFiles = await collectIpynbFiles(studentDir);
-  
+
   // 2. 将所有ipynb文件移动到学生根目录（重名文件自动加后缀）
   for (const ipynbPath of ipynbFiles) {
     const fileName = path.basename(ipynbPath);
@@ -131,12 +165,17 @@ async function flattenStudentDir(studentDir) {
     let suffix = 1;
     while (await fs.pathExists(targetPath)) {
       const nameWithoutExt = path.basename(fileName, CONFIG.targetFileExt);
-      targetPath = path.join(studentDir, `${nameWithoutExt}_${suffix}${CONFIG.targetFileExt}`);
+      targetPath = path.join(
+        studentDir,
+        `${nameWithoutExt}_${suffix}${CONFIG.targetFileExt}`
+      );
       suffix++;
     }
     // 移动文件到根目录
-    await fs.move(ipynbPath, targetPath).catch(err => {
-      console.warn(`⚠️  移动文件失败 ${ipynbPath} → ${targetPath}：${err.message}`);
+    await fs.move(ipynbPath, targetPath).catch((err) => {
+      console.warn(
+        `⚠️  移动文件失败 ${ipynbPath} → ${targetPath}：${err.message}`
+      );
     });
   }
 
@@ -151,7 +190,7 @@ async function flattenStudentDir(studentDir) {
       if (stats.isDirectory()) {
         // 先递归删除子目录内的内容，再删除目录本身
         await deleteSubDirs(filePath);
-        await fs.rmdir(filePath).catch(err => {
+        await fs.rmdir(filePath).catch((err) => {
           console.warn(`⚠️  删除目录失败 ${filePath}：${err.message}`);
         });
       }
@@ -172,13 +211,13 @@ async function main() {
     await fs.emptyDir(CONFIG.outputDir);
 
     // 读取源目录的学生压缩包
-    const sourceFiles = await fs.readdir(CONFIG.sourceDir).catch(err => {
+    const sourceFiles = await fs.readdir(CONFIG.sourceDir).catch((err) => {
       console.error(`❌ 读取源目录失败：${err.message}`);
       return [];
     });
-    const studentArchives = sourceFiles.filter(file => {
+    const studentArchives = sourceFiles.filter((file) => {
       const ext = path.extname(file).toLowerCase();
-      return CONFIG.archiveExts.includes(ext) && file.includes('-'); // 仅处理 学号-姓名.后缀
+      return CONFIG.archiveExts.includes(ext) && file.includes("-"); // 仅处理 学号-姓名.后缀
     });
 
     if (studentArchives.length === 0) {
@@ -199,7 +238,10 @@ async function main() {
 
       // 解压并处理嵌套压缩包
       const processedArchives = new Set();
-      await extractArchive(path.join(studentDir, archiveFile), processedArchives);
+      await extractArchive(
+        path.join(studentDir, archiveFile),
+        processedArchives
+      );
 
       // 关键：扁平化学生目录（核心修复嵌套问题）
       await flattenStudentDir(studentDir);
@@ -208,8 +250,9 @@ async function main() {
     }
 
     console.log(`\n🎉 所有学生作业处理完成！最终结果目录：${CONFIG.outputDir}`);
-    console.log(`📌 每个学生目录下仅保留 ${CONFIG.targetFileExt} 文件，无嵌套目录`);
-
+    console.log(
+      `📌 每个学生目录下仅保留 ${CONFIG.targetFileExt} 文件，无嵌套目录`
+    );
   } catch (err) {
     console.error(`💥 主流程执行失败：${err.message}`);
     process.exit(1);
