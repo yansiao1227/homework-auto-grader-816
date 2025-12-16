@@ -13,3 +13,5 @@
 
 node_modules
 解压后
+
+*.lock
